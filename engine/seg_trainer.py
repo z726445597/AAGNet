@@ -55,12 +55,12 @@ if __name__ == '__main__':
                 "device": 'cuda',
                 "architecture": "AAGNetGraphEncoder", # recommend: AAGNetGraphEncoder option: GCN SAGE GIN GAT GATv2 DeeperGCN AAGNetGraphEncoder
                 "dataset": dataset_name,
-                "dataset": "../traning_data/MFCAD2",
+                "dataset": "D:/ShortEssay/Datasets/MFCAD2_smoke",
 
-                "epochs": 100, # option: 100e for MFCAD2; 350e for MFCAD
+                "epochs": 10, # option: 100e for MFCAD2; 350e for MFCAD
                 "lr": 1e-2,
                 "weight_decay": 1e-2,
-                "batch_size": 256,
+                "batch_size": 64,
                 "ema_decay_per_epoch": 1. / 2.,
                 }
         )
