@@ -1,3 +1,5 @@
+> **Fork notice**: This fork is a local validation of AAGNet as a baseline for a machining-feature-recognition study. The environment was modernized (torch 2.11+cu128 / dgl 2.2.1+cu121) and verified with a smoke run on the official MFCAD++ gAAG data — see `ENVIRONMENT.md` for the full adaptation log, `environment-adapted.yml` for the exact environment fingerprint, and `tools/extract_smoke.py` for the smoke-subset extractor.
+
 # AAGNET: A Graph Neural Network towards Multi-task Machining Feature Recognition
 
 This repository provides an implementation of AAGNET described in the paper: [A Graph Neural Network towards Multi-task Machining Feature Recognition](https://doi.org/10.1016/j.rcim.2023.102661).
