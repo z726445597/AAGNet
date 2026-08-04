@@ -1,3 +1,16 @@
+# =============================================================================
+# u-stage adapt (逐条登记见 U_COMMITS.md):
+#   [1] (B 类) config "seed": 42 -> 24                          —— 四管线种子统一 24
+#   [2] (B 类) config "epochs": 10 -> 100                       —— 官方注释 100e for MFCAD2
+#       (10 为此前 smoke 配置)
+#   [3] (B 类) config "dataset" -> Unified roots\aagnet 训练入口 (原指向 MFCAD2_smoke)
+#   [4] (C 类, 官方 bug 修复如实披露) train_dataset 构造显式传
+#       num_train_data=10**9 —— dataloader/mfcad2.py 文档明写 "-1 = all",
+#       但实现 filelist["train"][:num_train_data] 默认 -1 会 [:-1] 丢 train 末行;
+#       官方文件零改动, 调用处显式传大数等价 all(协议 §3 发现 8)
+#   [5] (B 类) EarlyStopping: val IoU 连续 50 epoch 无改进则停   —— 早停耐心统一 50
+# 其余官方逻辑(EMA/优化器/cosine 调度/augmentation=False/存档与测试口径)零改动。
+# =============================================================================
 import os
 import time
 from tqdm import tqdm
@@ -51,13 +64,13 @@ if __name__ == '__main__':
                 "use_edge_attr": True,
                 "use_face_attr": True,
 
-                "seed": 42,
+                "seed": 24, # u-stage adapt[1]: 42 -> 24 (B 类)
                 "device": 'cuda',
                 "architecture": "AAGNetGraphEncoder", # recommend: AAGNetGraphEncoder option: GCN SAGE GIN GAT GATv2 DeeperGCN AAGNetGraphEncoder
                 "dataset": dataset_name,
-                "dataset": "D:/ShortEssay/Datasets/MFCAD2_smoke",
+                "dataset": "D:/ShortEssay/Datasets/Unified/roots/aagnet", # u-stage adapt[3]: smoke -> 训练 root (B 类)
 
-                "epochs": 10, # option: 100e for MFCAD2; 350e for MFCAD
+                "epochs": 100, # u-stage adapt[2]: 10 -> 100, 官方注释 100e for MFCAD2; 350e for MFCAD (B 类)
                 "lr": 1e-2,
                 "weight_decay": 1e-2,
                 "batch_size": 64,
@@ -107,6 +120,7 @@ if __name__ == '__main__':
 
     train_dataset = Dataset(root_dir=dataset, split='train', 
                             center_and_scale=False, normalize=True, random_rotate=False,
+                            num_train_data=10**9, # u-stage adapt[4]: C 类修复, 防官方默认 -1 -> [:-1] 丢末行
                             num_threads=8)
     graphs = train_dataset.graphs() # no need to load graphs again !
     val_dataset = Dataset(root_dir=dataset, graphs=graphs, split='val', 
@@ -131,6 +145,8 @@ if __name__ == '__main__':
     ema = ExponentialMovingAverage(model.parameters(), decay=ema_decay)
     
     best_acc = 0.
+    bad_epochs = 0 # u-stage adapt[5]: EarlyStopping 状态
+    es_patience = 50 # u-stage adapt[5]: 四管线统一 patience=50 (monitor 随官方 val IoU, mode=max)
     save_path = 'output'
     if not os.path.exists(save_path):
         os.mkdir(save_path)
@@ -225,9 +241,18 @@ if __name__ == '__main__':
                 cur_acc = mean_val_seg_iou
                 if cur_acc > best_acc:
                     best_acc = cur_acc
+                    bad_epochs = 0 # u-stage adapt[5]
                     logger.info(f'best metric: {cur_acc}, model saved')
                     torch.save(model.state_dict(), os.path.join(save_path, "weight_%d-epoch.pth"%(epoch)))
+                else:
+                    bad_epochs += 1 # u-stage adapt[5]
+                    logger.info(f'no improvement on val IoU: {bad_epochs}/{es_patience}')
           # epoch end
+        
+        # u-stage adapt[5]: EarlyStopping 判定(val IoU 连续 50 epoch 无改进则停)
+        if bad_epochs >= es_patience:
+            logger.info(f'EarlyStopping triggered at epoch {epoch}: val IoU no improvement for {es_patience} epochs')
+            break
         
     # training end test
     graphs = train_dataset.graphs() # no need to load graphs again !
